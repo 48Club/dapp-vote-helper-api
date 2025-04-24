@@ -1,0 +1,26 @@
+
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dapp-vote-helper-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-04-24",
+	"observability": {
+		"enabled": true
+	},
+	"compatibility_flags": [
+		"nodejs_compat_v2"
+	],
+	"d1_databases": [
+		{
+			"binding": "D1DB",
+			"database_name": "dapp-vote-helper-api",
+			"database_id": "984a3550-b832-4d36-9de0-ca23bbbb185a"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "www.48.club/api/v2/vote/*",
+			"zone_name": "48.club"
+		},
+	]
+}
