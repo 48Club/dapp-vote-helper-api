@@ -11,6 +11,8 @@ export class PostVote extends OpenAPIRoute {
 		let msgHash = Buffer.from(`${voteID}:{"msg":"${data.msg}","tx_hash":"${data.tx_hash}"}`, "utf8"); // 用户签名原文
 		let address = ethers.verifyMessage(msgHash, data.sign); // 还原用户地址
 
+		let checksummed = ethers.getAddress(data.address.toLowerCase());
+		if (checksummed !== address) return { code: 401, msg: "Invalid signature" };
 
 		const session = c.env.D1DB.withSession(`first-primary`);
 
