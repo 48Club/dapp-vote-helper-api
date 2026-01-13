@@ -1,28 +1,37 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "dapp-vote-helper-api",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-04-24",
 	"observability": {
-	  "enabled": true
+		"enabled": true
 	},
 	"compatibility_flags": [
-	  "nodejs_compat_v2"
+		"nodejs_compat_v2"
 	],
 	"d1_databases": [
-	  {
-		"binding": "D1DB",
-		"database_name": "dapp-vote-helper-api",
-		"database_id": "984a3550-b832-4d36-9de0-ca23bbbb185a"
-	  }
+		{
+			"binding": "D1DB",
+			"database_name": "dapp-vote-helper-api",
+			"database_id": "984a3550-b832-4d36-9de0-ca23bbbb185a"
+		},
+		{
+			"binding": "D1SMDB",
+			"database_name": "sentry-manage",
+			"database_id": "88986c29-6311-4394-ba91-957797c097ab"
+		}
 	],
 	"routes": [
-	  {
-		"pattern": "www.48.club/api/v2/vote/*",
-		"zone_name": "48.club"
-	  }
+		{
+			"pattern": "www.48.club/api/v2/*",
+			"zone_name": "48.club"
+		}
 	],
 	"placement": {
-	  "mode": "smart"
+		"mode": "smart"
 	}
-  }
+}
