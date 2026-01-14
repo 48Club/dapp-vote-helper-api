@@ -63,61 +63,86 @@ export class GetUserVote extends OpenAPIRoute {
 	}
 }
 
+async function getAllNodes(c: AppContext, table: string = "test_nodes") {
+	const [allow, Authorization] = authCheck(c, table);
+	if (!allow) return { code: 403, msg: "Forbidden" };
+
+	const result = await c.env.D1SMDB.prepare(`SELECT * FROM ${table}`).run();
+
+	if (result.error || !result.success) return { code: 500, msg: result.error };
+
+	let res = { "code": 200, "msg": null, "data": [] };
+
+	result.results.forEach(element => { res.data.push({ id: element.id, loc: element.loc, }) });
+
+	return res
+}
+
+function authCheck(c: AppContext, table: string): [boolean, string] {
+	const Authorization = c.req.header("Authorization");
+
+	if (table == "nodes") {
+		return [Authorization == c.env.API_TOKEN, Authorization]
+	} else {
+		return [Authorization == c.env.TEST_API_TOKEN, Authorization]
+	}
+}
+
+async function sm(c: AppContext, table: string = "test_nodes",) {
+	const [allow, Authorization] = authCheck(c, table);
+	if (!allow) return { code: 403, msg: "Forbidden" };
+
+	const nodeID = c.req.query("id");
+	if (!nodeID) return { "code": 400, "msg": "Node ID is required", "data": null };
+
+
+	const doAction = c.req.query("do_action");
+	var method = "GET";
+	if (["upgrade", "upgrade_geth"].includes(doAction)) method = "POST"; // 升级操作使用 POST 方法
+
+	var argsList = [];
+	const version = c.req.query("version");
+	if (version) argsList.push(`version=${version}`);
+
+	const result = await c.env.D1SMDB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(nodeID).first();
+	if (!result) return { "code": 400, "msg": "Node ID is required", "data": null } // 未找到对应节点
+	if (result.db_path) argsList.push(`db_path=${result.db_path}`); // 非空则添加参数
+	if (result.ipc_path) argsList.push(`ipc_path=${result.ipc_path}`);
+
+	const args = argsList.join("&");
+	var apiEndpoint = `http://${result.ip}.nip.io:30000/api/${doAction}`;
+	if (args) apiEndpoint += "?" + args;
+
+	const response = await fetch(apiEndpoint, {
+		method: method,
+		headers: {
+			'Authorization': Authorization,
+		},
+	});
+
+	if (response.status !== 200) return { "code": response.status, "msg": "Error from node", "data": null }
+	return await response.json();
+}
+
 
 export class GetAllNodes extends OpenAPIRoute {
 	async handle(c: AppContext) {
-		const Authorization = c.req.header("Authorization");
-		if (Authorization !== c.env.API_TOKEN) return { code: 403, msg: "Forbidden" };
-
-		const session = c.env.D1SMDB.withSession(`first-primary`);
-
-		const result = await session.prepare(`SELECT * FROM nodes`).run();
-
-		if (result.error || !result.success) return { code: 500, msg: result.error };
-
-		let res = { "code": 200, "msg": null, "data": [] };
-
-		result.results.forEach(element => { res.data.push({ id: element.id, loc: element.loc, }) });
-
-		return res
+		return await getAllNodes(c, "nodes");
+	}
+}
+export class GetAllNodesTEST extends OpenAPIRoute {
+	async handle(c: AppContext) {
+		return await getAllNodes(c);
+	}
+}
+export class SMTEST extends OpenAPIRoute {
+	async handle(c: AppContext) {
+		return await sm(c);
 	}
 }
 
 export class SM extends OpenAPIRoute {
 	async handle(c: AppContext) {
-		const Authorization = c.req.header("Authorization");
-
-		if (Authorization !== c.env.API_TOKEN) return { code: 403, msg: "Forbidden" };
-
-		const nodeID = c.req.query("id");
-		if (!nodeID) return { "code": 400, "msg": "Node ID is required", "data": null };
-
-
-		const doAction = c.req.query("do_action");
-		var method = "GET";
-		if (["upgrade", "upgrade_geth"].includes(doAction)) method = "POST"; // 升级操作使用 POST 方法
-
-		var argsList = [];
-		const version = c.req.query("version");
-		if (version) argsList.push(`version=${version}`);
-
-		const result = await c.env.D1SMDB.prepare(`SELECT * FROM nodes WHERE id = ?`).bind(nodeID).first();
-		if (!result) return { "code": 400, "msg": "Node ID is required", "data": null } // 未找到对应节点
-		if (result.db_path) argsList.push(`db_path=${result.db_path}`); // 非空则添加参数
-		if (result.ipc_path) argsList.push(`ipc_path=${result.ipc_path}`);
-
-		const args = argsList.join("&");
-		var apiEndpoint = `http://${result.ip}.nip.io:30000/api/${doAction}`;
-		if (args) apiEndpoint += "?" + args;
-
-		const response = await fetch(apiEndpoint, {
-			method: method,
-			headers: {
-				'Authorization': Authorization,
-			},
-		});
-
-		if (response.status !== 200) return { "code": response.status, "msg": "Error from node", "data": null }
-		return await response.json();
+		return await sm(c, "nodes");
 	}
 }
